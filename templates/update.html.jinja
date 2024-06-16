@@ -1,0 +1,62 @@
+{% extends "base.html.jinja" %}
+{% block header %}
+  {{ super() }}
+  {% block title %}
+    Update portfolio # {{ portfolio.id }}
+  {% endblock title %}
+{% endblock header %}
+{% include "header.html.jinja" %}
+{% block body %}
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col md-12 p-3">
+        <h2>
+          Update portfolio #{{ portfolio.id }}<a href="{{ url_for("Index") }}" class="btn btn-info btn-xs float-end">Back</a>
+        </h2>
+        <form action="{{ url_for('update', id=portfolio.id) }}" method="post">
+          <div class="mb-3">
+            <label>Name:</label>
+            <input type="hidden" name="id" value="{{ portfolio.id }}">
+            <input type="text"
+                   class="form-control"
+                   name="name"
+                   value="{{ portfolio.name }}">
+          </div>
+          <div class="mb-3">
+            <label>Description:</label>
+            <input type="textarea"
+                   class="form-control"
+                   name="description"
+                   value="{{ portfolio.description }}">
+          </div>
+          <div class="mb-3">
+            <label>Initial Balance:</label>
+            <input type="number"
+                   class="form-control"
+                   name="initial_balance"
+                   value="{{ portfolio.initial_balance }}">
+          </div>
+          <div class="mb-3">
+            <label>Monthly cash flow</label>
+            <input type="number"
+                   class="form-control"
+                   name="monthly_cash_flow"
+                   value="{{ portfolio.monthly_cash_flow }}">
+          </div>
+          <div class="mb-3">
+            <label>Rebalance frequency</label>
+            <select class="form-select"
+                    name="rebalance_frequency"
+                    value="{{ portfolio.rebalance_frequency }}">
+              {% for option in ['none', 'month', 'quarter', 'half-year', 'year'] %}
+                <option value="{{ option }}"
+                        {% if (portfolio.rebalance_frequency == option) %}selected=""{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit">Update</button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock body %}

@@ -1,0 +1,149 @@
+{% extends "base.html.jinja" %}
+{% block header %}
+  {{ super() }}
+  {% block title %}
+    Manage assets of portfolio #{{ portfolio.id }}
+  {% endblock title %}
+{% endblock header %}
+{% block body %}
+  {% include "header.html.jinja" %}
+  <template id="asset-row">
+    <div class="row mb-3" data-info="asset-group">
+      <div class="col-9">
+        <label for="asset-ticker-">Asset ticker</label>
+        <input type="text" class="form-control" name="asset-ticker-" />
+        <datalist id="ticker-options-"></datalist>
+      </div>
+      <div class="col-2">
+        <label for="asset-weight-">Asset weight</label>
+        <input type="number" step="0.01" class="form-control" name="asset-weight-">
+      </div>
+      <div class="col-1 d-flex h-20 align-items-end">
+        <button type="button" class="btn btn-danger" onclick="delete_row()">X</button>
+      </div>
+    </div>
+  </template>
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-md-6 p-3">
+        <h2>
+          Manage portfolio #{{ portfolio.id }} assets <a href='{{ url_for("Index") }}' class="btn btn-info btn-xs float-end">Back</a>
+        </h2>
+        <form action="{{ url_for('manage_assets', id=portfolio.id) }}"
+              method="post"
+              id="manage-assets-form">
+          {% for asset in assets %}
+            <div class="row mb-3"
+                 data-info="asset-group"
+                 data-uid="{{ asset.ticker.replace('.', '_') }}">
+              <div class="col-9">
+                <label for="asset-ticker-{{ asset.ticker.replace('.', '_') }}">Asset ticker</label>
+                <input type="text"
+                       class="form-control"
+                       name="asset-ticker-{{ asset.ticker.replace('.', '_') }}"
+                       list="ticker-options-{{ asset.ticker.replace('.', '_') }}"
+                       value="{{ asset.ticker }}" />
+                <datalist id="ticker-options-{{ asset.ticker.replace('.', '_') }}"></datalist>
+              </div>
+              <div class="col-2">
+                <label for="asset-weight-{{ asset.ticker.replace('.', '_') }}">Asset weight</label>
+                <input type="number"
+                       step="0.01"
+                       class="form-control"
+                       name="asset-weight-{{ asset.ticker.replace('.', '_') }}"
+                       value="{{ asset.weight }}">
+              </div>
+              <div class="col-1 d-flex h-20 align-items-end">
+                <button type="button"
+                        class="btn btn-danger"
+                        onclick="delete_row(`{{ asset.ticker.replace('.', '_') }}`)">X</button>
+              </div>
+            </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          <button type="button" class="btn btn-secondary" onclick="add_row()">Add asset</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+      const debounce = (callback, wait) => {
+          let timeoutId = null;
+          return (...args) => {
+              window.clearTimeout(timeoutId);
+              timeoutId = window.setTimeout(() => {
+                  callback.apply(null, args);
+              }, wait);
+          };
+      }
+
+      const get_assets = async (event) => {
+          if (!(event instanceof KeyboardEvent)) {
+              return
+          }
+          const query = event.target.value
+          if (query.length < 3) {
+              return
+          }
+          try {
+              const response = await fetch("{{url_for('get_assets_route')}}", {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      data: query
+                  }),
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+              })
+              if (!response.ok) {
+                  throw new Error("Network responded with non-ok code!");
+              }
+              const assets = await response.json();
+              field_name_unique_part = event.target.parentNode.parentNode.dataset.uid
+              const dataset_element = document.querySelector(`#ticker-options-${field_name_unique_part}`)
+              dataset_element.innerHTML = ''
+              dataset_element.append(...assets.map(asset => {
+                  const option = document.createElement('option')
+                  option.value = asset.symbol
+                  return option
+              }))
+          } catch (error) {
+              console.error('Error happened due to fetch: ', error.message)
+          }
+      }
+      const ticker_inputs = document.querySelectorAll('input[name^=asset-ticker-]')
+      const ticker_input_handler = debounce(get_assets, 300)
+      ticker_inputs.forEach(input => input.addEventListener('keyup', ticker_input_handler))
+
+      const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2)
+      const add_row = () => {
+          const last_row = document.querySelector("[data-info=asset-group]:last-of-type");
+          const template = document.querySelector("#asset-row")
+          const clone = template.content.cloneNode(true);
+          const button = clone.querySelector('button.btn-danger')
+          const row_uid = uid()
+          button.onclick = () => {
+              delete_row(row_uid)
+          }
+          const inputs = clone.querySelectorAll("input")
+          inputs[0].name = inputs[0].name + row_uid
+          inputs[0].onkeyup = get_assets
+          const ticker_label = inputs[0].parentNode.querySelector('label')
+          ticker_label.htmlFor = inputs[0].name
+          inputs[1].name = inputs[1].name + row_uid
+          const weight_label = inputs[1].parentNode.querySelector('label')
+          weight_label.htmlFor = inputs[1].name
+          const datalist = clone.querySelector('datalist')
+          datalist.id = datalist.id + row_uid
+          inputs[0].setAttribute('list', datalist.id)
+          last_row.after(clone)
+          const inserted_clone = document.querySelector("[data-info=asset-group]:last-of-type");
+          inserted_clone.dataset.uid = row_uid
+      }
+
+      const delete_row = (uid) => {
+          const asset_row = document.querySelector(`div[data-uid=${uid}]`)
+          asset_row.remove()
+      }
+  </script>
+{% endblock body %}

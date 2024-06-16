@@ -1,0 +1,23 @@
+{% extends "base.html.jinja" %}
+{% block header %}
+  {{ super() }}
+  {% block title %}
+    View #{{ portfolio.id }}
+  {% endblock title %}
+{% endblock header %}
+{% include "header.html.jinja" %}
+{% block body %}
+  <div class="container-fluid">
+    <h2>
+      View portfolio #{{ portfolio.id }}<a href="{{ url_for("Index") }}" class="btn btn-info btn-xs float-end">Back</a>
+    </h2>
+    <div class="p-3">
+      <p>Name: {{ portfolio.name }}</p>
+      <p>Description: {{ portfolio.description }}</p>
+      <p>Initial Balance: {{ portfolio.initial_balance }}</p>
+      <p>Tickers: {{ portfolio.get_beautiful_tickers() }}</p>
+      <p>Monthly Cash Flow: {{ portfolio.monthly_cash_flow }}</p>
+      <p>Rebalance Frequency: {{ portfolio.rebalance_frequency }}</p>
+    </div>
+  </div>
+{% endblock body %}

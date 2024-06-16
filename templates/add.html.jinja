@@ -1,0 +1,53 @@
+{% extends "base.html.jinja" %}
+{% block title %}
+  Add Portfolio
+{% endblock title %}
+{% block body %}
+  {% include "header.html.jinja" %}
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col md-12">
+        <div class="jumbotron p-3">
+          <h2>
+            Add Portfolio <a href="{{ url_for("Index") }}" class="btn btn-info btn-xs float-end">Back</a>
+          </h2>
+          <form action="{{ url_for("insert") }}" method="post">
+            <div class="mb-3">
+              <label>Name:</label>
+              <input type="text" class="form-control" name="name" required="1">
+            </div>
+            <div class="mb-3">
+              <label>Description:</label>
+              <input type="textarea" class="form-control" name="description" required="1">
+            </div>
+            <div class="mb-3">
+              <label>Initial Balance:</label>
+              <input type="number"
+                     class="form-control"
+                     name="initial_balance"
+                     required="1">
+            </div>
+            <div class="mb-3">
+              <label>Monthly cash flow</label>
+              <input type="number"
+                     class="form-control"
+                     name="monthly_cash_flow"
+                     required="1">
+            </div>
+            <div class="mb-3">
+              <label>Rebalance frequency</label>
+              <select class="form-select" name="rebalance_frequency" required="1">
+                <option value="none" selected>No rebalance</option>
+                <option value="month">Month</option>
+                <option value="quarter">Quarter</option>
+                <option value="half-year">Half year</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" type="submit">Add Portfolio</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock body %}

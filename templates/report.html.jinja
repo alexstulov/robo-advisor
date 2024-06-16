@@ -1,0 +1,219 @@
+<template id="portfolio_statistics_table">
+  <table class="table table-hover">
+    <thead>
+      <tr></tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+</template>
+<div class="row mb-4">
+  <div class=" col-md-6 col-12">
+    <div class="row">
+      <div class="col">
+        <input type="date" class="form-control" name="start-date" value="2010-10-01" />
+      </div>
+      <div class="col">
+        <input type="date" class="form-control" name="end-date" value="2021-10-01" />
+      </div>
+      <div class="col">
+        <button type="button"
+                class="btn btn-success btn-md"
+                onclick="generate_report()">Generate report</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row" id="report_headers"></div>
+<div class="row" id="wealth_plot"></div>
+<div class="row" id="portfolio_statistics"></div>
+<script>
+    window.onload = () => {
+        const end_date_el = document.querySelector('input[name="end-date"]')
+        const current_date = new Date()
+        let month = current_date.getMonth() + 1
+        month = month < 10 ? '0' + month : month
+        end_date_el.value = `${current_date.getFullYear()}-${month}-${current_date.getDate()}`
+    }
+
+    function inverseChannelColour(channelColour) {
+        return (255 - parseInt(channelColour, 16)).toString(16);
+    }
+
+    function contrastColour(colour) {
+        if (colour.charAt(0) == '#') {
+            colour = colour.slice(1);
+        }
+
+        const r = inverseChannelColour(colour.substring(0, 2));
+        const g = inverseChannelColour(colour.substring(2, 4));
+        const b = inverseChannelColour(colour.substring(4, 6));
+        const contrast = '#' + r.toString().padStart(2, "0") +
+            g.toString().padStart(2, "0") +
+            b.toString().padStart(2, "0");
+        return contrast;
+    }
+
+    const get_data = async () => {
+        const start_date_el = document.querySelector('input[name="start-date"]')
+        const end_date_el = document.querySelector('input[name="end-date"]')
+        const checked_portfolio_els = document.querySelectorAll('input[type=checkbox]')
+        const portfolio_ids = [...checked_portfolio_els].filter(el => el.checked).map(el => el.name.slice('portfolio-'.length))
+        const data_to_pass = {
+            data: {
+                start_date: start_date_el ? start_date_el.value : '',
+                end_date: end_date_el ? end_date_el.value : '',
+                portfolios: portfolio_ids
+            }
+        }
+        const response = await fetch('{{url_for("generate_report")}}', {
+            method: 'POST',
+            body: JSON.stringify(data_to_pass),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        if (!response.ok) {
+            throw new Error('Network responded with non-ok code!')
+        }
+        const result = await response.json();
+        const data = result.portfolios.reverse().map(portfolio => {
+            return {
+                timeseries: JSON.parse(portfolio.timeseries),
+                statistics: JSON.parse(portfolio.statistics)
+            }
+        })
+        return data
+    }
+
+    const prepare_data_for_report = (data) => {
+        const traces = []
+        const table_data = []
+
+        const prepare_traces = (portf) => {
+            const asset_names = Object.keys(portf.timeseries)
+            const asset_data = Object.values(portf.timeseries)
+
+            const dates = Object.keys(portf.timeseries[asset_names[0]]).map(date => date + '-01')
+            asset_names.forEach(name => {
+                const tempdata = Object.values(portf.timeseries[name])
+                const inflation_index = traces.findIndex(trace => trace.name === name)
+                const trace = {
+                    type: 'scatter',
+                    mode: 'lines',
+                    name,
+                    x: dates,
+                    y: tempdata,
+                    line: {
+                        color: contrastColour('white')
+                    }
+                }
+                if (inflation_index > -1) {
+                    traces[inflation_index].x = [...trace.x, ...traces[inflation_index].x]
+                    traces[inflation_index].y = [...trace.y, ...traces[inflation_index].y]
+                    return
+                }
+                traces.push(trace)
+            })
+        }
+
+        const prepare_statistics = (portf) => {
+            const table_stat = {
+                headers: [],
+                rows: []
+            }
+            const portf_stats = portf.statistics
+            delete portf_stats['inflation']
+            table_stat.headers = Object.keys(portf_stats)
+            for (i = 0; i < Object.keys(portf_stats.period).length; i++) {
+                const row = []
+                for (j = 0; j < table_stat.headers.length; j++) {
+                    let value = portf_stats[table_stat.headers[j]][i]
+                    if (typeof(value) == 'number') {
+                        value = Math.round(value * 10000, 2) / 100 + '%'
+                    }
+                    row.push(value)
+                }
+                table_stat.rows.push(row)
+            }
+            table_data.push(table_stat)
+        }
+
+        const process_data = (portf) => {
+            prepare_traces(portf)
+            prepare_statistics(portf)
+        }
+        data.forEach(process_data)
+        return {
+            traces,
+            table_data
+        }
+    }
+
+    const generate_report = async () => {
+        const data = await get_data()
+        const prepared_data = prepare_data_for_report(data)
+
+        const container = document.querySelector('#portfolio_statistics')
+        const report_headers = document.querySelector('#report_headers')
+        container.innerHTML = ''
+        const template = document.querySelector('#portfolio_statistics_table')
+        prepared_data.table_data.forEach(data => {
+            const clone = template.content.cloneNode(true);
+            const header_row = clone.querySelector('thead > tr')
+            data.headers.forEach(header => {
+                const cell = document.createElement('td')
+                cell.innerText = header
+                header_row.appendChild(cell)
+            })
+            const table_body = clone.querySelector('tbody')
+            data.rows.forEach(cells => {
+                const row = document.createElement('tr')
+                cells.forEach(cell => {
+                    const table_cell = document.createElement('td')
+                    table_cell.innerText = cell
+                    row.appendChild(table_cell)
+                })
+                table_body.appendChild(row)
+            })
+            const stat_header = document.createElement('h3')
+            stat_header.innerText = 'Statistics table'
+            container.appendChild(stat_header)
+            const wrapper = document.createElement('div')
+            wrapper.classList.add(['col-6', 'col-md-12'])
+            wrapper.appendChild(clone)
+            container.appendChild(wrapper)
+        })
+
+        const layout = {
+            title: 'Portfolios wealth index',
+            xaxis: {
+                title: 'Date',
+                autorange: true,
+                rangeslider: {}, // here to show slider, no configuration needed yet
+                type: 'date'
+            },
+            yaxis: {
+                title: 'Wealth Indices',
+                autorange: true,
+                type: 'linear'
+            },
+            legend: {
+                text: 'Assets'
+            }
+        }
+        const plot_element = document.querySelector('#wealth_plot')
+        const plot_header = document.createElement('h3')
+        plot_header.innerText = 'Portfolio wealth index'
+        const report_header = document.createElement('h2')
+        report_header.innerText = 'Report'
+        report_headers.innerHTML = ''
+        report_headers.appendChild(report_header)
+        report_headers.appendChild(plot_header)
+        Plotly.newPlot(
+            'wealth_plot',
+            prepared_data.traces,
+            layout
+        )
+    }
+</script>

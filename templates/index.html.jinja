@@ -1,0 +1,77 @@
+{% extends "base.html.jinja" %}
+{% block title %}
+  Just Another Robo Advisor
+{% endblock title %}
+{% block body %}
+  {% include "header.html.jinja" %}
+  <div class="container-fluid p-3">
+    <div class="row">
+      <h2>
+        Manage Portfolios <a href='{{ url_for("insert") }}'
+    class="btn btn-outline-success btn-sm float-end"><i class="bi bi-plus-lg fs-5 fw-bold"></i></a>
+      </h2>
+    </div>
+    <div class="row">
+      <div class="col-6 col-md-12">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-success alert-dismissable" role="alert">
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Close"></button>
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th></th>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>InitBalance</th>
+              <th>Tickers</th>
+              <th>Cashflow</th>
+              <th>Reb.Freq</th>
+              <th>DiscountRate</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in portfolios %}
+              <tr>
+                <td>
+                  <input type="checkbox" name="portfolio-{{ row.id }}" />
+                </td>
+                <td>{{ row.id }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.description }}</td>
+                <td>{{ row.initial_balance }}</td>
+                <td>{{ row.get_beautiful_tickers() }}</td>
+                <td>{{ row.monthly_cash_flow }}</td>
+                <td>{{ row.rebalance_frequency }}</td>
+                <td>{{ row.discount_rate }}</td>
+                <td class="d-flex justify-content-end">
+                  <a href='{{ url_for("view",id=row.id) }}'
+                     class="btn btn-outline-info btn-sm ms-2"><i class="bi bi-eye-fill"></i></a>
+                  <a href='{{ url_for("manage_assets",id=row.id) }}'
+                     class="btn btn-outline-warning btn-sm ms-2"><i class="bi bi-bar-chart-fill"></i></a>
+                  <a href='{{ url_for("update",id=row.id) }}'
+                     class="btn btn-outline-warning btn-sm ms-2"><i class="bi bi-pencil-fill"></i></a>
+                  <a href='{{ url_for("delete",id=row.id) }}'
+                     class="btn btn-outline-danger btn-sm ms-2"
+                     onclick="return confirm('Are You Sure To Delete ?')"><i class="bi bi-trash-fill"></i></a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="portfolios-report">{% include "report.html.jinja" %}</div>
+  </div>
+{% endblock body %}
